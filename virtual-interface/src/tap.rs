@@ -28,6 +28,7 @@ impl From<ffi::NulError> for VirtualInterfaceError {
     }
 }
 
+#[derive(Debug)]
 pub struct VirtualInterface {
     device: File,
 }
@@ -73,4 +74,38 @@ impl VirtualInterface {
     pub fn device(&mut self) -> &mut File {
         &mut self.device
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::process::Command;
+    use super::*;
+
+    #[test]
+    fn interface_long_name() {
+        match VirtualInterface::create("abcdefghijklomnpqrstuv") {
+            Err(VirtualInterfaceError::DeviceNameTooLong) => return,
+            _ => panic!("device name shouldn't be more than 20 chars"),
+        };
+    }
+
+    #[test]
+    fn interface_name_contains_zero_byte() {
+        match VirtualInterface::create("dev\0ds0") {
+            Err(VirtualInterfaceError::DeviceNameContainsNulByte(_)) => return,
+            _ => panic!("device name shouldn't contain zero byte"),
+        };
+    }
+
+    // #[test]
+    // fn can_create_interface() {
+    //     VirtualInterface::create("dev0").unwrap();
+    //     Command::new("ip")
+    //         .arg("link")
+    //         .arg("show")
+    //         .arg("dev0")
+    //         .output()
+    //         .expect("failed to get interface dev0");
+    // }
 }
