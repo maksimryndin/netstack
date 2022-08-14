@@ -1,0 +1,16 @@
+[package]
+name = "virtual-interface"
+version = "0.1.0"
+edition = "2021"
+authors = ["Maksim Ryndin"]
+license = "MIT"
+#readme = "README.md"
+description = """
+Network interfaces for virtual network devices for Linux.
+"""
+repository = "https://github.com/maksimryndin/netstack"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bindings = { path = "../bindings", version = "0.1" }

@@ -1,0 +1,18 @@
+[package]
+name = "bindings"
+version = "0.1.0"
+edition = "2021"
+authors = ["Maksim Ryndin"]
+license = "MIT"
+#readme = "README.md"
+description = """
+Linux system FFI bindings.
+"""
+repository = "https://github.com/maksimryndin/netstack"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[build-dependencies]
+bindgen = "0.60.1"

@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "virtual-interface",
+    "bindings",
+]
