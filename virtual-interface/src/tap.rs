@@ -14,6 +14,7 @@ pub enum VirtualInterfaceError {
     IoctlError,
     DeviceNameTooLong,
     DeviceNameContainsNulByte(ffi::NulError),
+    SocketError,
 }
 
 impl From<io::Error> for VirtualInterfaceError {
@@ -62,8 +63,35 @@ impl VirtualInterface {
             as std::os::raw::c_short;
 
         let raw_fd = device.into_raw_fd();
+        // Create TAP device
         // man ioctl: on error, -1 is returned, and errno is set appropriately.
         if unsafe { bindings::ioctl(raw_fd, bindings::TUNSETIFF as u64, &mut ifr as *mut _) } == -1
+        {
+            return Err(VirtualInterfaceError::IoctlError);
+        }
+
+        // Thre rest of the method is for setting the interface UP - we could also do it with `sudo ip link set <name> up` after its creation
+
+        // Creation of the socket for ioctl our interface is in some sense a dirty hack of Unix to align different
+        // devices under the umbrella of ioctl - see https://unix.stackexchange.com/questions/363730/what-is-a-generic-socket-and-how-does-it-relate-to-a-network-device
+        // Rust std::net::UdpSocket can only be constructed with binding to some address
+        // While there is https://github.com/rust-lang/socket2 crate to provide low level API
+        // let's create a socket with our bindings as it is enough for us
+        // man socket
+        let sock_fd = unsafe {
+            bindings::socket(
+                bindings::AF_INET as std::os::raw::c_int,
+                bindings::__socket_type_SOCK_DGRAM as std::os::raw::c_int,
+                0,
+            )
+        };
+        if sock_fd == -1 {
+            return Err(VirtualInterfaceError::SocketError);
+        }
+
+        ifr.ifr_ifru.ifru_flags = bindings::net_device_flags_IFF_UP as std::os::raw::c_short;
+        if unsafe { bindings::ioctl(sock_fd, bindings::SIOCSIFFLAGS as u64, &mut ifr as *mut _) }
+            == -1
         {
             return Err(VirtualInterfaceError::IoctlError);
         }
@@ -76,11 +104,10 @@ impl VirtualInterface {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::process::Command;
     use super::*;
+    use std::process::Command;
 
     #[test]
     fn interface_long_name() {
@@ -100,6 +127,27 @@ mod tests {
 
     // #[test]
     // fn can_create_interface() {
+    //     VirtualInterface::create("dev0").unwrap();
+    //     Command::new("ip")
+    //         .arg("link")
+    //         .arg("show")
+    //         .arg("dev0")
+    //         .output()
+    //         .expect("failed to get interface dev0");
+    // }
+
+    // #[test]
+    // fn tap_device_with_the_same_name_already_exists() {
+    // sudo ip tuntap add dev0 mode tap
+    //    Command::new("ip")
+    //     .arg("tuntap")
+    //     .arg("add")
+    //     .arg("dev0")
+    //     .arg("mode")
+    //     .arg("tap")
+    //     .output()
+    //     .expect("failed to create tap device dev0");
+    // sudo ip tuntap del dev0 mode tap
     //     VirtualInterface::create("dev0").unwrap();
     //     Command::new("ip")
     //         .arg("link")
